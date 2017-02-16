@@ -23,5 +23,8 @@
           "src/Zicht/Itertools/mappings.php",
           "src/Zicht/Itertools/reductions.php"
       ]
+    },
+    "require": {
+        "symfony/property-access": "^3.2"
     }
 }

@@ -7,6 +7,8 @@
 namespace Zicht\Itertools\conversions;
 
 use Doctrine\Common\Collections\Collection;
+use Symfony\Component\PropertyAccess\Exception\NoSuchPropertyException;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 use Zicht\Itertools\lib\StringIterator;
 
 /**
@@ -110,42 +112,13 @@ function mixed_to_closure($closure)
 function mixed_to_value_getter($strategy)
 {
     if (is_string($strategy)) {
-        $keyParts = explode('.', $strategy);
-        $strategy = function ($value) use ($keyParts) {
-            foreach ($keyParts as $keyPart) {
-                if (is_object($value)) {
-                    // property_exists does not distinguish between public, protected, or private properties, hence we need to use reflection
-                    $reflection = new \ReflectionObject($value);
-                    if ($reflection->hasProperty($keyPart)) {
-                        $property = $reflection->getProperty($keyPart);
-                        if ($property->isPublic()) {
-                            $value = $property->getValue($value);
-                            continue;
-                        }
-                    }
-                }
-
-                if (is_callable([$value, $keyPart])) {
-                    $value = call_user_func([$value, $keyPart]);
-                    continue;
-                }
-
-                if (is_array($value) && array_key_exists($keyPart, $value)) {
-                    $value = $value[$keyPart];
-                    continue;
-                }
-
-                if (is_object($value) && method_exists($value, '__get')) {
-                    $value = $value->$keyPart;
-                    continue;
-                }
-
-                // no match found
-                $value = null;
-                break;
+        $accessor = PropertyAccess::createPropertyAccessor();
+        return function ($value) use ($accessor, $strategy) {
+            try {
+                return $accessor->getValue($value, $strategy);
+            } catch (NoSuchPropertyException $exception) {
+                return null;
             }
-
-            return $value;
         };
     }
 
